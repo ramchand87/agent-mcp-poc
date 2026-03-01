@@ -2,7 +2,8 @@ import { ChatOllama } from "@langchain/ollama";
 import { type BaseMessage, HumanMessage } from "@langchain/core/messages";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import * as readLine from 'readline';
+import express from "express";
+import cors from "cors";
 
 // 1. Initialize our local Ollama model using LangChain
 const llm = new ChatOllama({
@@ -50,62 +51,68 @@ async function main() {
     // Bind the mapped tools to the model
     const llmWithTools = llm.bindTools(toolsForLlm);
 
-    // 5. Interactive Chat Loop
-    const rl = readLine.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
+    // 5. Express API Server
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
 
+    // In-memory chat history for the session
     const chatHistory: BaseMessage[] = [];
 
-    const askQuestion = () => {
-        rl.question("\nYou: ", async (input) => {
-            if (input.toLowerCase() === 'exit') {
-                process.exit(0);
-            }
+    app.post("/api/chat", async (req: any, res: any) => {
+        const { message } = req.body;
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
 
-            chatHistory.push(new HumanMessage(input));
+        try {
+            console.log(`\nUser: ${message}`);
+            chatHistory.push(new HumanMessage(message));
 
-            try {
-                // A. Send the user message (and history) to the LLM
-                const responseMessage = await llmWithTools.invoke(chatHistory);
+            // A. Send the user message (and history) to the LLM
+            let responseMessage = await llmWithTools.invoke(chatHistory);
+            chatHistory.push(responseMessage);
 
-                chatHistory.push(responseMessage);
+            // B. Check if the LLM decided to use a Tool
+            if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+                // We'll iterate through all tool calls, though often there's just one
+                for (const toolCall of responseMessage.tool_calls) {
+                    console.log(`[Agent resolving tool: ${toolCall.name} with args: ${JSON.stringify(toolCall.args)}]`);
 
-                // B. Check if the LLM decided to use a Tool
-                if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-                    for (const toolCall of responseMessage.tool_calls) {
-                        console.log(`\n[Agent executing tool: ${toolCall.name} with args: ${JSON.stringify(toolCall.args)}]`);
+                    // C. Execute the chosen tool against the connected MCP server
+                    const toolResult = await mcpClient.callTool({
+                        name: toolCall.name,
+                        arguments: toolCall.args
+                    });
 
-                        // C. Execute the chosen tool against the connected MCP server
-                        const toolResult = await mcpClient.callTool({
-                            name: toolCall.name,
-                            arguments: toolCall.args
-                        });
+                    const toolContent = toolResult.content as any[];
+                    const outputText = toolContent.find((c: any) => c.type === 'text')?.text || "No text output";
 
-                        // For simplicity in this demo, log the raw text content back
-                        const toolContent = toolResult.content as any[];
-                        const outputText = toolContent.find((c: any) => c.type === 'text')?.text || "No text output";
-                        console.log(`[Tool Result]:\n`, outputText);
-
-                        // In a real LangChain ReAct loop, you would append this tool response back to the chatHistory 
-                        // and invoke the LLM *again* so it can formulate a final answer based on the tool result.
-                        // For this specific sample, we just display the raw data retrieved via the tool.
-                    }
-                } else {
-                    // Normal conversation without tool use
-                    console.log(`\nAgent: ${responseMessage.content}`);
+                    // Push the tool response to history as a follow-up
+                    chatHistory.push(new HumanMessage(
+                        `[Observation from tool execution - ${toolCall.name}]:\n${outputText}\nInstruct: Analyze the tools results and answer my initial question.`
+                    ));
                 }
-            } catch (e: any) {
-                console.error("Error communicating with Agent:", e.message);
+
+                // D. Invoke LLM again so it can give the final answer based on the tool result
+                responseMessage = await llmWithTools.invoke(chatHistory);
+                chatHistory.push(responseMessage);
             }
 
-            askQuestion();
-        });
-    };
+            console.log(`Agent: ${responseMessage.content}`);
+            res.json({ reply: responseMessage.content });
 
-    console.log("\nAgent Ready. You can ask questions like: 'Fetch all employees' or type 'exit' to quit.");
-    askQuestion();
+        } catch (e: any) {
+            console.error("Error processing chat:", e.message);
+            res.status(500).json({ error: "Failed to process chat: " + e.message });
+        }
+    });
+
+    const PORT = 3001;
+    app.listen(PORT, () => {
+        console.log(`\nAgent API Server running on port ${PORT}`);
+        console.log(`Accepting POST requests at http://localhost:${PORT}/api/chat`);
+    });
 }
 
 main().catch(console.error);

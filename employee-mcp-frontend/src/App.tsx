@@ -18,6 +18,30 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeEndpoint, setActiveEndpoint] = useState<string | null>(null);
 
+  // Chat State
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'agent', text: string }[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput.trim();
+    setChatMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setChatInput("");
+    setChatLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:3001/api/chat', { message: userMessage });
+      setChatMessages(prev => [...prev, { role: 'agent', text: response.data.reply }]);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || err.message || 'Unknown error contacting Agent';
+      setChatMessages(prev => [...prev, { role: 'agent', text: `Error: ${errorMessage}` }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const fetchData = async (url: string, endpointId: string) => {
     setLoading(true);
     setError(null);
@@ -116,6 +140,53 @@ function App() {
               Configure your network requests using the control panel above.
             </div>
           )}
+        </div>
+
+        {/* Chat Console Panel */}
+        <div className="glass-panel chat-console">
+          <div className="chat-header">
+            <h3>🤖 Agent Chat Console</h3>
+          </div>
+          <div className="chat-messages">
+            {chatMessages.length === 0 && (
+              <div className="data-empty" style={{ padding: '1rem 0', margin: 'auto' }}>
+                Ask the agent a question about the employees!
+              </div>
+            )}
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`chat-message ${msg.role}`}>
+                <span className="message-label">{msg.role}</span>
+                {msg.text}
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="chat-message agent">
+                <span className="message-label">agent</span>
+                <span style={{ fontStyle: 'italic', opacity: 0.7 }}>Thinking...</span>
+              </div>
+            )}
+          </div>
+          <div className="chat-input-area">
+            <input
+              type="text"
+              className="chat-input"
+              placeholder="E.g. What is emp1's salary?"
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
+              disabled={chatLoading}
+            />
+            <button
+              className="chat-send-btn"
+              onClick={sendChatMessage}
+              disabled={chatLoading || !chatInput.trim()}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
         </div>
       </main>
     </div>
