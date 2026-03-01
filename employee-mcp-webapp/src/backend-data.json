@@ -1,0 +1,17 @@
+{
+  "employees": [
+    { "id": "emp1", "name": "Alice Smith", "department": "Engineering" },
+    { "id": "emp2", "name": "Bob Jones", "department": "Marketing" },
+    { "id": "emp3", "name": "Charlie Brown", "department": "Sales" }
+  ],
+  "salaries": [
+    { "employeeId": "emp1", "baseSalary": 120000, "bonus": 15000 },
+    { "employeeId": "emp2", "baseSalary": 85000, "bonus": 5000 },
+    { "employeeId": "emp3", "baseSalary": 90000, "bonus": 10000 }
+  ],
+  "attendance": [
+    { "employeeId": "emp1", "daysPresent": 220, "daysAbsent": 5 },
+    { "employeeId": "emp2", "daysPresent": 210, "daysAbsent": 15 },
+    { "employeeId": "emp3", "daysPresent": 225, "daysAbsent": 0 }
+  ]
+}
