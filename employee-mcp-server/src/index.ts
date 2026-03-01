@@ -31,6 +31,27 @@ server.registerTool(
     }
 );
 
+// Tool 1b: Search Employees by Name
+server.registerTool(
+    "search_employees_by_name",
+    {
+        description: "Search for an employee by name to find their ID.",
+        inputSchema: {
+            name: z.string().describe("The name of the employee to search for")
+        }
+    },
+    async ({ name }) => {
+        try {
+            const response = await axios.get(`${WEBAPP_API_URL}/employees/search`, { params: { name } });
+            return {
+                content: [{ type: "text", text: JSON.stringify(response.data, null, 2) }]
+            };
+        } catch (error: any) {
+            return { content: [{ type: "text", text: `Error searching employees: ${error.message}` }], isError: true };
+        }
+    }
+);
+
 // Tool 2: Get Employee Details by ID
 server.registerTool(
     "get_employee_by_id",

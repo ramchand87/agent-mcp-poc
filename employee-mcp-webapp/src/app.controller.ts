@@ -1,13 +1,21 @@
-import { Controller, Get, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common';
 import { AppService } from './app.service';
 
 @Controller('api')
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService) { }
 
   @Get('employees')
   getAllEmployees() {
     return this.appService.getAllEmployees();
+  }
+
+  @Get('employees/search')
+  searchEmployeesByName(@Query('name') name: string) {
+    if (!name) {
+      return this.appService.getAllEmployees();
+    }
+    return this.appService.searchEmployeesByName(name);
   }
 
   @Get('employees/:id')

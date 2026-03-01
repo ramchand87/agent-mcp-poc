@@ -20,6 +20,11 @@ export class AppService {
     return this.data.employees.find((emp: any) => emp.id === id);
   }
 
+  searchEmployeesByName(name: string) {
+    const lowerName = name.toLowerCase();
+    return this.data.employees.filter((emp: any) => emp.name.toLowerCase().includes(lowerName));
+  }
+
   getSalaryByEmployeeId(employeeId: string) {
     return this.data.salaries.find((sal: any) => sal.employeeId === employeeId);
   }
