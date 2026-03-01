@@ -115,6 +115,39 @@ server.registerTool(
     }
 );
 
+// Tool 5: Get Complete Employee Stats (Aggregator)
+server.registerTool(
+    "get_complete_employee_stats",
+    {
+        description: "Fetch comprehensive profile (info, salary, and attendance) in a single request.",
+        inputSchema: {
+            employeeId: z.string().describe("The ID of the employee (e.g. 'emp1')")
+        }
+    },
+    async ({ employeeId }) => {
+        try {
+            // Aggregating multiple backend calls into one MCP response
+            const [info, salary, attendance] = await Promise.all([
+                axios.get(`${WEBAPP_API_URL}/employees/${employeeId}`),
+                axios.get(`${WEBAPP_API_URL}/salary/${employeeId}`),
+                axios.get(`${WEBAPP_API_URL}/attendance/${employeeId}`)
+            ]);
+
+            const consolidatedData = {
+                profile: info.data,
+                salary: salary.data,
+                attendance: attendance.data
+            };
+
+            return {
+                content: [{ type: "text", text: JSON.stringify(consolidatedData, null, 2) }]
+            };
+        } catch (error: any) {
+            return { content: [{ type: "text", text: `Error aggregating stats: ${error.message}` }], isError: true };
+        }
+    }
+);
+
 async function main() {
     // Start the server using 'stdio' transport.
     // This means the AI Agent will spawn this script as a child process and communicate via standard input/output.

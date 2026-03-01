@@ -15,6 +15,7 @@ A bridge component that implements the **Model Context Protocol (MCP)**. It maps
 3.  `get_employee_by_id`: basic info lookups.
 4.  `get_employee_salary`: financial data retrieval.
 5.  `get_employee_attendance`: tracking records.
+6.  `get_complete_employee_stats`: **Aggregator tool** that fetches profile, salary, and attendance in parallel.
 
 ## Invocation
 

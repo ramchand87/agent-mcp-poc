@@ -44,4 +44,6 @@ The AI Agent utilizes a custom autonomous loop to chain tools. If you ask "What 
 2.  **Fetch** salary for `emp2`.
 3.  **Respond** with the final answer.
 
+Alternatively, the agent can use the **Aggregator Tool** (`get_complete_employee_stats`) to fetch all three data points in a single parallelized request, demonstrating a more efficient MCP architecture.
+
 Refer to the individual component READMEs for specific setup and architecture details.
